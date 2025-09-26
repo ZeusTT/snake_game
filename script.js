@@ -262,8 +262,6 @@ function handleMobileControl(direction) {
 }
 
 // 事件监听器
-startBtn.addEventListener('click', startGame);
-resetBtn.addEventListener('click', resetGame);
 document.addEventListener('keydown', handleKeyPress);
 
 // 移动端按钮事件监听器
@@ -271,6 +269,10 @@ upBtn.addEventListener('click', () => handleMobileControl('up'));
 downBtn.addEventListener('click', () => handleMobileControl('down'));
 leftBtn.addEventListener('click', () => handleMobileControl('left'));
 rightBtn.addEventListener('click', () => handleMobileControl('right'));
+
+// 开始和重置按钮事件监听器
+startBtn.addEventListener('click', startGame);
+resetBtn.addEventListener('click', resetGame);
 
 // 初始化游戏
 initGame();
