@@ -11,7 +11,7 @@
     <div class="game-container">
         <div class="header">
             <button id="resetBtn" class="header-btn"><i class="fas fa-redo"></i></button>
-            <h1><i class="fas fa-snake"></i> 贪吃蛇</h1>
+            <h1><i class="fas fa-fish"></i> 贪吃鱼</h1>
             <button id="startBtn" class="header-btn"><i class="fas fa-play"></i></button>
         </div>
         <div class="score-container">
@@ -37,7 +37,89 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 统计面板按钮 -->
+        <div class="stats-button">
+            <button id="statsBtn"><i class="fas fa-chart-bar"></i> 统计</button>
+        </div>
     </div>
+    
+    <!-- 统计面板 -->
+    <div id="statsPanel" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2><i class="fas fa-chart-bar"></i> 游戏统计</h2>
+            <div class="stats-container">
+                <div class="stats-section">
+                    <h3>当前游戏</h3>
+                    <div class="stat-item">
+                        <span>得分:</span>
+                        <span id="currentScore">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>蛇身长度:</span>
+                        <span id="currentLength">3</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>游戏时长:</span>
+                        <span id="gameTime">00:00</span>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <h3>历史记录</h3>
+                    <div class="stat-item">
+                        <span>历史最高分:</span>
+                        <span id="highScore">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>最长蛇身:</span>
+                        <span id="maxLength">3</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>总游戏次数:</span>
+                        <span id="totalGames">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>总得分:</span>
+                        <span id="totalScore">0</span>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <h3>食物收集</h3>
+                    <div class="stat-item">
+                        <span>普通食物:</span>
+                        <span id="normalFood">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>加速食物:</span>
+                        <span id="speedFood">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>减速食物:</span>
+                        <span id="slowFood">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>超级食物:</span>
+                        <span id="superFood">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>缩小食物:</span>
+                        <span id="shrinkFood">0</span>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <h3>成就</h3>
+                    <div id="achievementsContainer">
+                        <!-- 成就将在这里动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="script.js"></script>
 </body>
 </html>
