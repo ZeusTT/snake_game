@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏 - 清新扁平风</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <button id="resetBtn" class="header-btn"><i class="fas fa-redo"></i></button>
+            <h1><i class="fas fa-snake"></i> 贪吃蛇</h1>
+            <button id="startBtn" class="header-btn"><i class="fas fa-play"></i></button>
+        </div>
+        <div class="score-container">
+            <i class="fas fa-trophy"></i> 得分: <span id="score">0</span>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">
+            <p><i class="fas fa-arrows-alt"></i> 使用方向键控制蛇的移动</p>
+        </div>
+        
+        <!-- 移动端虚拟方向键 -->
+        <div class="mobile-controls">
+            <div class="dpad">
+                <div class="dpad-row">
+                    <div class="dpad-spacer"></div>
+                    <button id="upBtn" class="dpad-btn"><i class="fas fa-arrow-up"></i></button>
+                    <div class="dpad-spacer"></div>
+                </div>
+                <div class="dpad-row">
+                    <button id="leftBtn" class="dpad-btn"><i class="fas fa-arrow-left"></i></button>
+                    <button id="downBtn" class="dpad-btn"><i class="fas fa-arrow-down"></i></button>
+                    <button id="rightBtn" class="dpad-btn"><i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
