@@ -260,10 +260,14 @@ class AutoLeaderboard {
     }
     
     // 多个服务器选项（按优先级尝试）
+    // 使用HTTPS反向代理服务
     const serverOptions = [
-      this.getProtocol() + '124.221.83.63:3000',  // 您的腾讯云服务器
-      'http://localhost:3000',     // 本地开发服务器
-      'http://127.0.0.1:3000'      // 本地回环地址
+      'https://cors-anywhere.herokuapp.com/http://124.221.83.63:3000',  // CORS代理
+      'https://api.allorigins.win/raw?url=http://124.221.83.63:3000',  // AllOrigins代理
+      'https://thingproxy.freeboard.io/fetch/http://124.221.83.63:3000', // 免费代理
+      'http://124.221.83.63:3000',  // 直接连接（HTTPS下会失败）
+      'http://localhost:3000',       // 本地开发服务器
+      'http://127.0.0.1:3000'        // 本地回环地址
     ];
     
     // 返回第一个可用的服务器地址
