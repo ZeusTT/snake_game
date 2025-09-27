@@ -242,6 +242,11 @@ class AutoLeaderboard {
     // 默认为您的服务器地址，但可以从URL参数获取
     this.serverUrl = this.getServerUrl();
     
+    // 确保 serverOptions 已初始化
+    if (!this.serverOptions) {
+      this.serverOptions = ['http://124.221.83.63:3000'];
+    }
+    
     // 初始化服务器连接
     this.initServerConnection();
     
@@ -259,12 +264,18 @@ class AutoLeaderboard {
       return customServer.startsWith('http') ? customServer : this.getProtocol() + customServer;
     }
     
+    // 根据当前协议自动选择服务器选项
+    const isHTTPS = window.location.protocol === 'https:';
+    
     // 定义服务器选项（作为实例属性）
-    this.serverOptions = [
-      'http://124.221.83.63:3000',  // 直接连接你的服务器
-      'https://corsproxy.io/?http://124.221.83.63:3000',  // HTTPS代理
-      'https://thingproxy.freeboard.io/fetch/http://124.221.83.63:3000', // HTTPS代理
-      'https://api.allorigins.win/raw?url=http://124.221.83.63:3000'  // AllOrigins代理
+    this.serverOptions = isHTTPS ? [
+      // HTTPS环境下优先使用HTTPS代理
+      'https://corsproxy.io/?http://124.221.83.63:3000',
+      'https://thingproxy.freeboard.io/fetch/http://124.221.83.63:3000',
+      'https://api.allorigins.win/raw?url=http://124.221.83.63:3000'
+    ] : [
+      // HTTP环境下直接连接
+      'http://124.221.83.63:3000'
     ];
     
     // 返回第一个选项进行初始连接测试
@@ -525,7 +536,7 @@ class AutoLeaderboard {
   // 手动检查连接状态
   async checkConnection() {
     try {
-      const response = await fetch(`${this.serverUrl}/health`);
+      const response = await fetch(`${this.serverUrl}/api/status`);
       if (response.ok) {
         this.isOnline = true;
         return true;
