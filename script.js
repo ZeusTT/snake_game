@@ -269,9 +269,7 @@ class AutoLeaderboard {
     
     // 定义服务器选项（作为实例属性）
     this.serverOptions = isHTTPS ? [
-      // HTTPS环境下优先使用HTTPS代理
-      'https://corsproxy.io/?http://124.221.83.63:3000',
-      'https://thingproxy.freeboard.io/fetch/http://124.221.83.63:3000',
+      // HTTPS环境下使用有效的代理
       'https://api.allorigins.win/raw?url=http://124.221.83.63:3000'
     ] : [
       // HTTP环境下直接连接
