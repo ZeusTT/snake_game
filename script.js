@@ -396,49 +396,74 @@ class AutoLeaderboard {
 
     // 尝试提交到服务器
     if (this.isOnline) {
-      try {
-        const response = await fetch(`${this.serverUrl}/api/leaderboard`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(submitData)
-        });
+      const maxRetries = 2;
+      let lastError = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`🚀 第${attempt}次尝试提交分数到服务器:`, this.serverUrl);
+          console.log('📤 提交数据:', submitData);
+          
+          const response = await fetch(`${this.serverUrl}/api/leaderboard`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(submitData)
+          });
 
-        if (response.ok) {
-          const responseText = await response.text();
+          // 记录详细的响应信息
+          console.log('📊 服务器响应状态:', response.status, response.statusText);
           
-          // 检查响应是否为空
-          if (!responseText) {
-            throw new Error('服务器返回空响应');
-          }
-          
-          try {
-            const result = JSON.parse(responseText);
+          if (response.ok) {
+            const responseText = await response.text();
             
-            if (result.success) {
-              console.log('✅ 分数自动提交成功');
-              
-              // 如果创下新纪录，显示通知
-              if (result.isNewRecord) {
-                this.showNewRecordNotification(gameData.score);
-              }
-              
-              return; // 提交成功，不需要保存到本地
-            } else {
-              throw new Error(result.message || '服务器处理失败');
+            // 检查响应是否为空
+            if (!responseText) {
+              console.log('❌ 服务器返回空响应（可能是代理问题）');
+              throw new Error('代理服务器返回空响应');
             }
-          } catch (parseError) {
-            throw new Error(`服务器响应格式错误: ${parseError.message}`);
+            
+            try {
+              const result = JSON.parse(responseText);
+              console.log('📄 服务器返回数据:', result);
+              
+              if (result.success) {
+                console.log('✅ 分数自动提交成功');
+                
+                // 如果创下新纪录，显示通知
+                if (result.isNewRecord) {
+                  this.showNewRecordNotification(gameData.score);
+                }
+                
+                return; // 提交成功，不需要保存到本地
+              } else {
+                throw new Error(result.message || '服务器处理失败');
+              }
+            } catch (parseError) {
+              console.log('❌ JSON解析失败，原始响应:', responseText);
+              throw new Error(`代理响应格式错误: ${parseError.message}`);
+            }
+          } else {
+            console.log('❌ 服务器返回错误状态:', response.status);
+            throw new Error(`HTTP ${response.status} - 服务器端错误`);
           }
-        } else {
-          throw new Error(`HTTP ${response.status}`);
+          
+        } catch (error) {
+          lastError = error;
+          console.log(`❌ 第${attempt}次提交失败:`, error.message);
+          
+          // 如果不是最后一次尝试，等待后重试
+          if (attempt < maxRetries) {
+            console.log('⏳ 等待1秒后重试...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
-        
-      } catch (error) {
-        console.log('❌ 服务器提交失败，保存到本地:', error);
-        this.isOnline = false;
       }
+      
+      // 所有重试都失败
+      console.log('❌ 所有重试均失败，保存到本地:', lastError);
+      this.isOnline = false;
     }
 
     // 服务器提交失败或离线时，保存到本地
