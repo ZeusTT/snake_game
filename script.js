@@ -340,6 +340,11 @@ class AutoLeaderboard {
             this.isOnline = true;
             this.serverUrl = testUrl;
             console.log('✅ 服务器连接成功:', data);
+            
+            // 立即更新UI连接状态
+            if (typeof updateConnectionStatus === 'function') {
+              updateConnectionStatus(true);
+            }
             return;
           }
         } catch (error) {
@@ -380,19 +385,30 @@ class AutoLeaderboard {
         });
 
         if (response.ok) {
-          const result = await response.json();
+          const responseText = await response.text();
           
-          if (result.success) {
-            console.log('✅ 分数自动提交成功');
+          // 检查响应是否为空
+          if (!responseText) {
+            throw new Error('服务器返回空响应');
+          }
+          
+          try {
+            const result = JSON.parse(responseText);
             
-            // 如果创下新纪录，显示通知
-            if (result.isNewRecord) {
-              this.showNewRecordNotification(gameData.score);
+            if (result.success) {
+              console.log('✅ 分数自动提交成功');
+              
+              // 如果创下新纪录，显示通知
+              if (result.isNewRecord) {
+                this.showNewRecordNotification(gameData.score);
+              }
+              
+              return; // 提交成功，不需要保存到本地
+            } else {
+              throw new Error(result.message || '服务器处理失败');
             }
-            
-            return; // 提交成功，不需要保存到本地
-          } else {
-            throw new Error(result.message);
+          } catch (parseError) {
+            throw new Error(`服务器响应格式错误: ${parseError.message}`);
           }
         } else {
           throw new Error(`HTTP ${response.status}`);
