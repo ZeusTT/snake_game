@@ -238,12 +238,36 @@ class AutoLeaderboard {
     this.cloudbaseApp = null;
     this.isOnline = false;
     
+    // 动态配置服务器地址
+    // 默认为您的服务器地址，但可以从URL参数获取
+    this.serverUrl = this.getServerUrl();
+    
     // 初始化服务器连接
-    this.serverUrl = 'http://124.221.83.63:3000'; // 腾讯云服务器
     this.initServerConnection();
     
     // 启动自动同步
     this.startAutoSync();
+  }
+
+  // 获取服务器地址
+  getServerUrl() {
+    // 从URL参数获取服务器地址
+    const urlParams = new URLSearchParams(window.location.search);
+    const customServer = urlParams.get('server');
+    
+    if (customServer) {
+      return customServer.startsWith('http') ? customServer : `http://${customServer}`;
+    }
+    
+    // 多个服务器选项（按优先级尝试）
+    const serverOptions = [
+      'http://124.221.83.63:3000',  // 您的腾讯云服务器
+      'http://localhost:3000',     // 本地开发服务器
+      'http://127.0.0.1:3000'      // 本地回环地址
+    ];
+    
+    // 返回第一个可用的服务器地址
+    return serverOptions[0];
   }
 
   // 生成玩家唯一ID（基于设备生成）
