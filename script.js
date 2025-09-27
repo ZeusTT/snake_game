@@ -259,18 +259,16 @@ class AutoLeaderboard {
       return customServer.startsWith('http') ? customServer : this.getProtocol() + customServer;
     }
     
-    // 多个服务器选项（按优先级尝试）
-    // 优先使用HTTPS服务，兼容GitHub Pages
-    const serverOptions = [
-      'https://api.allorigins.win/raw?url=http://124.221.83.63:3000',  // HTTPS代理
+    // 定义服务器选项（作为实例属性）
+    this.serverOptions = [
+      'http://124.221.83.63:3000',  // 直接连接你的服务器
+      'https://corsproxy.io/?http://124.221.83.63:3000',  // HTTPS代理
       'https://thingproxy.freeboard.io/fetch/http://124.221.83.63:3000', // HTTPS代理
-      'https://corsproxy.io/?http://124.221.83.63:3000',  // 另一个HTTPS代理
-      'https://cors-anywhere.herokuapp.com/http://124.221.83.63:3000',  // CORS代理
-      // 对于GitHub Pages，回退到纯本地模式
-      null  // 本地模式
+      'https://api.allorigins.win/raw?url=http://124.221.83.63:3000'  // AllOrigins代理
+    ];
     
-    // 返回第一个可用的服务器地址
-    return serverOptions[0];
+    // 返回第一个选项进行初始连接测试
+    return this.serverOptions[0];
   }
 
   // 根据当前页面协议选择HTTP/HTTPS
@@ -307,50 +305,46 @@ class AutoLeaderboard {
 
   // 初始化服务器连接
   async initServerConnection() {
-    // 如果serverUrl为null，直接使用本地模式
-    if (this.serverUrl === null) {
-      console.log('🔧 使用纯本地模式');
-      this.isOnline = false;
-      return;
-    }
-    
     try {
-      // 如果当前是HTTPS但服务器是HTTP，尝试HTTPS回退
-      let testUrl = this.serverUrl;
-      if (window.location.protocol === 'https:' && testUrl.startsWith('http://')) {
-        testUrl = testUrl.replace('http://', 'https://');
+      // 测试每个服务器选项，找到第一个可用的
+      for (let i = 0; i < this.serverOptions.length; i++) {
+        const testUrl = this.serverOptions[i];
+        console.log(`🔍 尝试连接服务器: ${testUrl}`);
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          
+          // 使用正确的端点 /api/status
+          const response = await fetch(`${testUrl}/api/status`, {
+            signal: controller.signal,
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const data = await response.json();
+            this.isOnline = true;
+            this.serverUrl = testUrl;
+            console.log('✅ 服务器连接成功:', data);
+            return;
+          }
+        } catch (error) {
+          console.log(`❌ 服务器 ${testUrl} 连接失败:`, error.message);
+          // 继续尝试下一个服务器
+        }
       }
       
-      // 测试服务器连接（添加超时设置）
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`${testUrl}/health`, {
-        signal: controller.signal,
-        mode: 'cors'
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        this.isOnline = true;
-        this.serverUrl = testUrl; // 更新为实际可用的URL
-        console.log('✅ 服务器连接成功');
-      } else {
-        throw new Error('服务器响应异常');
-      }
+      // 所有服务器都失败
+      throw new Error('所有服务器连接尝试均失败');
       
     } catch (error) {
-      console.log('❌ 服务器连接失败，使用本地模式:', error.name || error.message);
-      
-      // 对于所有错误类型，都使用本地模式
+      console.log('❌ 服务器连接失败，使用本地模式:', error.message);
       this.isOnline = false;
-      
-      // 如果是HTTPS相关错误，提供更清晰的提示
-      if (error.name === 'TypeError' || error.message.includes('Failed to fetch') || 
-          error.message.includes('Mixed Content') || error.message.includes('SSL')) {
-        console.log('🔒 安全策略阻止远程连接，使用本地模式');
-      }
     }
   }
 
