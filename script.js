@@ -140,12 +140,95 @@ let gameStats = {
     },
     
     // 成就
-    achievements: {}
+    achievements: {},
+    
+    // 主题设置
+    theme: 'classic',
+    effects: {
+        particle: true,
+        animation: true,
+        glow: true,
+        performance: 'medium'
+    }
 };
 
 // 游戏计时器
 let gameTimer = null;
 let gameStartTime = null;
+
+// 主题系统
+const Themes = {
+    CLASSIC: {
+        id: 'classic',
+        name: '经典主题',
+        foodColors: {
+            NORMAL: '#ff6b6b',
+            SPEED: '#4a90e2',
+            SLOW: '#50c878',
+            SUPER: '#ffd700',
+            SHRINK: '#9370db'
+        }
+    },
+    DEEPSEA: {
+        id: 'deepsea',
+        name: '深海主题',
+        foodColors: {
+            NORMAL: '#ff5252',
+            SPEED: '#448aff',
+            SLOW: '#4caf50',
+            SUPER: '#ffd740',
+            SHRINK: '#7c4dff'
+        }
+    },
+    SPACE: {
+        id: 'space',
+        name: '太空主题',
+        foodColors: {
+            NORMAL: '#ff1744',
+            SPEED: '#2979ff',
+            SLOW: '#00e676',
+            SUPER: '#ffc400',
+            SHRINK: '#d500f9'
+        }
+    },
+    NEON: {
+        id: 'neon',
+        name: '霓虹主题',
+        foodColors: {
+            NORMAL: '#ff0266',
+            SPEED: '#00b8d4',
+            SLOW: '#00e676',
+            SUPER: '#ffd600',
+            SHRINK: '#ea80fc'
+        }
+    },
+    PIXEL: {
+        id: 'pixel',
+        name: '像素主题',
+        foodColors: {
+            NORMAL: '#ff0000',
+            SPEED: '#0000ff',
+            SLOW: '#00ff00',
+            SUPER: '#ffff00',
+            SHRINK: '#ff00ff'
+        }
+    },
+    CANDY: {
+        id: 'candy',
+        name: '糖果主题',
+        foodColors: {
+            NORMAL: '#ff6b9d',
+            SPEED: '#6bcaff',
+            SLOW: '#7bde87',
+            SUPER: '#ffd166',
+            SHRINK: '#c191ff'
+        }
+    }
+};
+
+// 当前主题
+let currentTheme = Themes.CLASSIC;
+
 
 // 当前激活的特效
 let activeEffect = null;
@@ -634,7 +717,20 @@ function applyFoodEffect(foodType) {
 
 // 创建蛇头图像对象
 const snakeHeadImg = new Image();
+let snakeHeadLoaded = false;
 // 使用1.jpg作为蛇头图像
+snakeHeadImg.onload = function() {
+    snakeHeadLoaded = true;
+    // 如果游戏已经初始化，重新绘制游戏
+    if (typeof drawGame === 'function') {
+        drawGame();
+    }
+};
+snakeHeadImg.onerror = function() {
+    // 如果图片加载失败，设置一个标志并使用备用方案
+    console.warn('蛇头图片加载失败，使用备用绘制');
+    snakeHeadLoaded = true; // 仍然设置为true以避免无限等待
+};
 snakeHeadImg.src = '1.jpg';
 
 // 绘制游戏元素
@@ -656,8 +752,43 @@ function drawGame() {
     // 蛇头（始终绘制，保持正面朝向）
     if (snake.length > 0) {
         const head = snake[0];
-        // 直接绘制蛇头图像，不进行任何旋转，保持正面朝向
-        ctx.drawImage(snakeHeadImg, head.x * gridSize, head.y * gridSize, gridSize - 1, gridSize - 1);
+        
+        // 如果图片已加载，绘制图片；否则使用备用绘制
+        if (snakeHeadLoaded && snakeHeadImg.complete && snakeHeadImg.naturalWidth !== 0) {
+            // 直接绘制蛇头图像，不进行任何旋转，保持正面朝向
+            ctx.drawImage(snakeHeadImg, head.x * gridSize, head.y * gridSize, gridSize - 1, gridSize - 1);
+        } else {
+            // 图片未加载完成时的备用绘制方案
+            ctx.fillStyle = '#4a90e2'; // 使用主题的主色
+            ctx.beginPath();
+            ctx.arc(
+                head.x * gridSize + gridSize/2, 
+                head.y * gridSize + gridSize/2, 
+                gridSize/2 - 1, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 绘制眼睛让蛇头更有辨识度
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                head.x * gridSize + gridSize/2 - 3, 
+                head.y * gridSize + gridSize/2 - 2, 
+                2, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.arc(
+                head.x * gridSize + gridSize/2 + 3, 
+                head.y * gridSize + gridSize/2 - 2, 
+                2, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
     }
     
     // 蛇身
@@ -768,6 +899,12 @@ function moveSnake() {
         score += food.type.points;
         scoreDisplay.textContent = score;
         
+        // 分数跳动动画
+        scoreDisplay.classList.add('score-bounce');
+        setTimeout(() => {
+            scoreDisplay.classList.remove('score-bounce');
+        }, 500);
+        
         // 更新统计数据
         updateStats();
         
@@ -823,11 +960,22 @@ function gameLoop() {
         // 播放碰撞音效
         playCollisionSound();
         
+        // 更新游戏统计数据
+        gameStats.totalGames++;
+        gameStats.totalScore += score;
+        
+        // 停止游戏计时器
+        stopGameTimer();
+        
         clearInterval(gameInterval);
         gameInterval = null;
         gameStarted = false;
         startBtn.innerHTML = '<i class="fas fa-play"></i>';
         clearEffect(); // 清除所有特效
+        
+        // 保存统计数据
+        saveGameStats();
+        
         alert(`游戏结束！你的得分是：${score}`);
         return;
     }
@@ -840,6 +988,9 @@ function startGame() {
     if (!gameInterval) {
         // 播放开始音效
         playStartSound();
+        
+        // 开始游戏计时器
+        startGameTimer();
         
         gameInterval = setInterval(gameLoop, currentSpeed);
         gameStarted = true;
@@ -922,6 +1073,181 @@ rightBtn.addEventListener('click', () => handleMobileControl('right'));
 startBtn.addEventListener('click', startGame);
 resetBtn.addEventListener('click', resetGame);
 
+// 统计面板控制函数
+function initStatsPanel() {
+    const statsBtn = document.getElementById('statsBtn');
+    const statsPanel = document.getElementById('statsPanel');
+    const closeStats = statsPanel.querySelector('.close');
+    
+    // 统计按钮点击事件
+    statsBtn.addEventListener('click', () => {
+        // 更新统计数据
+        updateStatsDisplay();
+        
+        statsPanel.style.display = 'block';
+        statsPanel.classList.add('show');
+    });
+    
+    // 关闭统计面板
+    closeStats.addEventListener('click', () => {
+        statsPanel.classList.remove('show');
+        setTimeout(() => {
+            statsPanel.style.display = 'none';
+        }, 300);
+    });
+    
+    // 点击面板外部关闭
+    statsPanel.addEventListener('click', (e) => {
+        if (e.target === statsPanel) {
+            statsPanel.classList.remove('show');
+            setTimeout(() => {
+                statsPanel.style.display = 'none';
+            }, 300);
+        }
+    });
+}
+
+// 主题控制函数
+function initThemeSystem() {
+    const themeBtn = document.getElementById('themeBtn');
+    const themePanel = document.getElementById('themePanel');
+    const closeTheme = themePanel.querySelector('.close');
+    const themeOptions = document.querySelectorAll('.theme-option');
+    
+    // 主题按钮点击事件
+    themeBtn.addEventListener('click', () => {
+        themePanel.style.display = 'block';
+        themePanel.classList.add('show');
+    });
+    
+    // 关闭主题面板
+    closeTheme.addEventListener('click', () => {
+        themePanel.classList.remove('show');
+        setTimeout(() => {
+            themePanel.style.display = 'none';
+        }, 300);
+    });
+    
+    // 主题选择事件
+    themeOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            // 移除其他选项的选中状态
+            themeOptions.forEach(opt => opt.classList.remove('selected'));
+            // 设置当前选中
+            option.classList.add('selected');
+            
+            const themeId = option.dataset.theme;
+            changeTheme(themeId);
+        });
+    });
+    
+    // 效果设置
+    const particleEffect = document.getElementById('particleEffect');
+    const animationEffect = document.getElementById('animationEffect');
+    const glowEffect = document.getElementById('glowEffect');
+    const performanceMode = document.getElementById('performanceMode');
+    
+    // 加载保存的设置
+    const savedTheme = localStorage.getItem('snakeGameTheme');
+    const savedEffects = localStorage.getItem('snakeGameEffects');
+    
+    if (savedTheme) {
+        changeTheme(savedTheme);
+        // 设置对应的主题选项为选中状态
+        themeOptions.forEach(option => {
+            if (option.dataset.theme === savedTheme) {
+                option.classList.add('selected');
+            }
+        });
+    }
+    
+    if (savedEffects) {
+        const effects = JSON.parse(savedEffects);
+        particleEffect.checked = effects.particle !== false;
+        animationEffect.checked = effects.animation !== false;
+        glowEffect.checked = effects.glow !== false;
+        performanceMode.value = effects.performance || 'medium';
+        
+        // 更新游戏统计中的设置
+        gameStats.effects = effects;
+    }
+    
+    // 监听设置变化
+    particleEffect.addEventListener('change', saveEffects);
+    animationEffect.addEventListener('change', saveEffects);
+    glowEffect.addEventListener('change', saveEffects);
+    performanceMode.addEventListener('change', saveEffects);
+}
+
+// 切换主题
+function changeTheme(themeId) {
+    const theme = Object.values(Themes).find(t => t.id === themeId) || Themes.CLASSIC;
+    currentTheme = theme;
+    
+    // 更新DOM属性
+    document.documentElement.setAttribute('data-theme', themeId);
+    
+    // 更新食物颜色
+    updateFoodColors();
+    
+    // 保存主题设置
+    localStorage.setItem('snakeGameTheme', themeId);
+    
+    // 重绘游戏
+    drawGame();
+}
+
+// 更新食物颜色
+function updateFoodColors() {
+    FoodType.NORMAL.color = currentTheme.foodColors.NORMAL;
+    FoodType.SPEED.color = currentTheme.foodColors.SPEED;
+    FoodType.SLOW.color = currentTheme.foodColors.SLOW;
+    FoodType.SUPER.color = currentTheme.foodColors.SUPER;
+    FoodType.SHRINK.color = currentTheme.foodColors.SHRINK;
+}
+
+// 保存效果设置
+function saveEffects() {
+    const particleEffect = document.getElementById('particleEffect');
+    const animationEffect = document.getElementById('animationEffect');
+    const glowEffect = document.getElementById('glowEffect');
+    const performanceMode = document.getElementById('performanceMode');
+    
+    const effects = {
+        particle: particleEffect.checked,
+        animation: animationEffect.checked,
+        glow: glowEffect.checked,
+        performance: performanceMode.value
+    };
+    
+    // 更新游戏统计中的设置
+    gameStats.effects = effects;
+    
+    // 保存到本地存储
+    localStorage.setItem('snakeGameEffects', JSON.stringify(effects));
+    
+    // 应用效果设置
+    applyEffectsSettings();
+}
+
+// 应用效果设置
+function applyEffectsSettings() {
+    const effects = gameStats.effects;
+    
+    // 根据性能模式调整效果
+    switch (effects.performance) {
+        case 'low':
+            // 降低动画复杂度
+            break;
+        case 'medium':
+            // 标准效果
+            break;
+        case 'high':
+            // 增强效果
+            break;
+    }
+}
+
 // 页面加载完成后初始化游戏
 document.addEventListener('DOMContentLoaded', function() {
     initGame();
@@ -929,4 +1255,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化音频
     initAudio();
+    
+    // 初始化游戏统计数据
+    initGameStats();
+    
+    // 初始化统计面板
+    initStatsPanel();
+    
+    // 初始化主题系统
+    initThemeSystem();
 });
