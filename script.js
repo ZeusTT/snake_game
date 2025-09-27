@@ -269,8 +269,10 @@ class AutoLeaderboard {
     
     // 定义服务器选项（作为实例属性）
     this.serverOptions = isHTTPS ? [
-      // HTTPS环境下使用有效的代理
-      'https://api.allorigins.win/raw?url=http://124.221.83.63:3000'
+      // HTTPS环境下尝试多种方案
+      'https://cors-anywhere.herokuapp.com/http://124.221.83.63:3000',  // CORS代理
+      'https://api.codetabs.com/v1/proxy?quest=http://124.221.83.63:3000',  // 备用代理
+      'https://jsonp.afeld.me/?url=http://124.221.83.63:3000'  // JSONP代理
     ] : [
       // HTTP环境下直接连接
       'http://124.221.83.63:3000'
@@ -314,15 +316,22 @@ class AutoLeaderboard {
 
   // 初始化服务器连接
   async initServerConnection() {
+    const isHTTPS = window.location.protocol === 'https:';
+    
+    // 如果是HTTPS环境，提供特殊提示
+    if (isHTTPS) {
+      console.log('🔒 检测到HTTPS环境，使用代理服务连接服务器');
+    }
+    
     try {
       // 测试每个服务器选项，找到第一个可用的
       for (let i = 0; i < this.serverOptions.length; i++) {
         const testUrl = this.serverOptions[i];
-        console.log(`🔍 尝试连接服务器: ${testUrl}`);
+        console.log(`🔍 尝试连接服务器 (${i+1}/${this.serverOptions.length}): ${testUrl}`);
         
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
           
           // 使用正确的端点 /api/status
           const response = await fetch(`${testUrl}/api/status`, {
@@ -348,17 +357,29 @@ class AutoLeaderboard {
             return;
           }
         } catch (error) {
-          console.log(`❌ 服务器 ${testUrl} 连接失败:`, error.message);
+          console.log(`❌ 服务器选项 ${i+1} 连接失败:`, error.message);
           // 继续尝试下一个服务器
         }
       }
       
       // 所有服务器都失败
-      throw new Error('所有服务器连接尝试均失败');
+      if (isHTTPS) {
+        console.log('⚠️ 代理服务不稳定，切换到本地模式。可以通过以下方式解决：');
+        console.log('1. 使用本地HTTP服务器运行游戏');
+        console.log('2. 将服务器升级为HTTPS');
+        console.log('3. 使用手动同步功能');
+      }
+      
+      this.isOnline = false;
       
     } catch (error) {
       console.log('❌ 服务器连接失败，使用本地模式:', error.message);
       this.isOnline = false;
+    }
+    
+    // 最终更新UI状态
+    if (typeof updateConnectionStatus === 'function') {
+      updateConnectionStatus(this.isOnline);
     }
   }
 
