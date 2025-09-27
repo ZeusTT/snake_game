@@ -308,6 +308,213 @@ button:active {
     color: #ccc;
 }
 
+/* 排行榜面板样式 */
+.leaderboard-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.leaderboard-status span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.player-info {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f0f8ff;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.player-name-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.player-name-input label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.player-name-input input {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    flex: 1;
+}
+
+.player-name-input button {
+    padding: 5px 10px;
+    font-size: 12px;
+    margin: 0;
+}
+
+.connection-status {
+    font-size: 13px;
+    color: #666;
+}
+
+.leaderboard-container {
+    margin-bottom: 20px;
+}
+
+.leaderboard-header {
+    display: grid;
+    grid-template-columns: 60px 1fr 80px 80px 100px;
+    gap: 10px;
+    padding: 10px 15px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 6px 6px 0 0;
+    font-weight: 600;
+}
+
+.leaderboard-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 0 0 6px 6px;
+}
+
+.leaderboard-item {
+    display: grid;
+    grid-template-columns: 60px 1fr 80px 80px 100px;
+    gap: 10px;
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s;
+}
+
+.leaderboard-item:hover {
+    background-color: #f8f9fa;
+}
+
+.leaderboard-item:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-item.current-player {
+    background-color: #e6f0fa;
+    border-left: 3px solid var(--primary-color);
+}
+
+.rank-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.rank-1 {
+    background-color: #ffd700;
+    color: #333;
+}
+
+.rank-2 {
+    background-color: #c0c0c0;
+    color: #333;
+}
+
+.rank-3 {
+    background-color: #cd7f32;
+    color: white;
+}
+
+.rank-other {
+    background-color: #f0f0f0;
+    color: #666;
+}
+
+.player-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.player-score {
+    font-weight: 600;
+    color: var(--primary-color);
+    text-align: right;
+}
+
+.player-device {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+}
+
+.player-time {
+    font-size: 12px;
+    color: #999;
+    text-align: right;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #666;
+    gap: 10px;
+}
+
+.leaderboard-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.leaderboard-actions button {
+    padding: 8px 15px;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+    .leaderboard-header {
+        grid-template-columns: 50px 1fr 70px 60px 80px;
+        gap: 5px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    
+    .leaderboard-item {
+        grid-template-columns: 50px 1fr 70px 60px 80px;
+        gap: 5px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    
+    .player-device, .player-time {
+        font-size: 10px;
+    }
+    
+    .leaderboard-actions {
+        flex-direction: column;
+    }
+    
+    .leaderboard-actions button {
+        width: 100%;
+    }
+}
+
 .achievement-name {
     font-weight: 600;
     margin-bottom: 5px;

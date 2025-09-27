@@ -229,6 +229,261 @@ const Themes = {
 // 当前主题
 let currentTheme = Themes.CLASSIC;
 
+// 自动排行榜系统
+class AutoLeaderboard {
+  constructor() {
+    this.cloudbaseInitialized = false;
+    this.playerId = this.generatePlayerId();
+    this.playerName = this.getPlayerName();
+    this.cloudbaseApp = null;
+    this.isOnline = false;
+    
+    // 初始化服务器连接
+    this.serverUrl = 'http://124.221.83.63:3000'; // 腾讯云服务器
+    this.initServerConnection();
+    
+    // 启动自动同步
+    this.startAutoSync();
+  }
+
+  // 生成玩家唯一ID（基于设备生成）
+  generatePlayerId() {
+    let playerId = localStorage.getItem('snakePlayerId');
+    if (!playerId) {
+      playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('snakePlayerId', playerId);
+    }
+    return playerId;
+  }
+
+  // 获取玩家名称
+  getPlayerName() {
+    let name = localStorage.getItem('snakePlayerName');
+    if (!name) {
+      name = '玩家' + Math.floor(Math.random() * 1000);
+      localStorage.setItem('snakePlayerName', name);
+    }
+    return name;
+  }
+
+  // 设置玩家名称
+  setPlayerName(newName) {
+    this.playerName = newName.substring(0, 10); // 限制长度
+    localStorage.setItem('snakePlayerName', this.playerName);
+  }
+
+  // 初始化服务器连接
+  async initServerConnection() {
+    try {
+      // 测试服务器连接
+      const response = await fetch(`${this.serverUrl}/health`);
+      if (response.ok) {
+        this.isOnline = true;
+        console.log('✅ 服务器连接成功');
+      } else {
+        throw new Error('服务器响应异常');
+      }
+      
+    } catch (error) {
+      console.log('❌ 服务器连接失败，使用本地模式:', error);
+      this.isOnline = false;
+    }
+  }
+
+  // 自动提交分数（游戏结束时调用）
+  async autoSubmitScore(gameData) {
+    const submitData = {
+      playerId: this.playerId,
+      playerName: this.playerName,
+      score: gameData.score,
+      snakeLength: gameData.snakeLength,
+      gameTime: gameData.gameTime,
+      device: this.getDeviceType()
+    };
+
+    // 尝试提交到服务器
+    if (this.isOnline) {
+      try {
+        const response = await fetch(`${this.serverUrl}/api/leaderboard`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(submitData)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success) {
+            console.log('✅ 分数自动提交成功');
+            
+            // 如果创下新纪录，显示通知
+            if (result.isNewRecord) {
+              this.showNewRecordNotification(gameData.score);
+            }
+            
+            return; // 提交成功，不需要保存到本地
+          } else {
+            throw new Error(result.message);
+          }
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+      } catch (error) {
+        console.log('❌ 服务器提交失败，保存到本地:', error);
+        this.isOnline = false;
+      }
+    }
+
+    // 服务器提交失败或离线时，保存到本地
+    this.saveLocalScore(gameData);
+  }
+
+  // 获取实时排行榜
+  async getRealTimeLeaderboard() {
+    if (!this.isOnline) {
+      return this.getLocalLeaderboard();
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/leaderboard`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          return result.data;
+        } else {
+          throw new Error(result.message);
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+    } catch (error) {
+      console.log('获取云端排行榜失败:', error);
+      return this.getLocalLeaderboard();
+    }
+  }
+
+  // 保存本地分数（离线时使用）
+  saveLocalScore(gameData) {
+    const localScores = JSON.parse(localStorage.getItem('snakeLocalScores') || '[]');
+    
+    // 查找现有记录
+    const existingIndex = localScores.findIndex(score => score.playerId === this.playerId);
+    
+    const scoreRecord = {
+      playerId: this.playerId,
+      playerName: this.playerName,
+      score: gameData.score,
+      snakeLength: gameData.snakeLength,
+      gameTime: gameData.gameTime,
+      device: this.getDeviceType(),
+      timestamp: new Date().toISOString()
+    };
+
+    if (existingIndex !== -1) {
+      // 更新现有记录（只保留最高分）
+      if (gameData.score > localScores[existingIndex].score) {
+        localScores[existingIndex] = scoreRecord;
+      }
+    } else {
+      // 添加新记录
+      localScores.push(scoreRecord);
+    }
+
+    // 按分数排序并保存
+    localScores.sort((a, b) => b.score - a.score);
+    localStorage.setItem('snakeLocalScores', JSON.stringify(localScores.slice(0, 20)));
+  }
+
+  // 获取本地排行榜
+  getLocalLeaderboard() {
+    const localScores = JSON.parse(localStorage.getItem('snakeLocalScores') || '[]');
+    return localScores.map((score, index) => ({
+      rank: index + 1,
+      ...score
+    }));
+  }
+
+  // 获取设备类型
+  getDeviceType() {
+    const ua = navigator.userAgent;
+    if (/Mobile|Android|iPhone|iPad|iPod/.test(ua)) {
+      return 'mobile';
+    } else {
+      return 'desktop';
+    }
+  }
+
+  // 显示新纪录通知
+  showNewRecordNotification(score) {
+    // 可以添加一个简单的UI通知
+    console.log(`🎉 恭喜！您创下了新纪录：${score}分`);
+    
+    // 简单的弹窗通知（可选）
+    if (confirm(`🎉 恭喜！您创下了新纪录：${score}分\n\n分数已自动同步到好友排行榜！`)) {
+      // 用户点击确定
+    }
+  }
+
+  // 启动自动同步
+  startAutoSync() {
+    // 每30秒自动刷新排行榜
+    setInterval(() => {
+      this.autoRefreshLeaderboard();
+    }, 30000);
+
+    // 监听网络状态变化
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      console.log('网络已连接，恢复云端同步');
+      this.autoRefreshLeaderboard();
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      console.log('网络断开，切换到本地模式');
+    });
+  }
+
+  // 自动刷新排行榜
+  async autoRefreshLeaderboard() {
+    if (this.isOnline) {
+      await this.getRealTimeLeaderboard();
+      // 这里可以触发UI更新
+      this.updateLeaderboardUI();
+    }
+  }
+
+  // 更新排行榜UI（需要与现有UI集成）
+  updateLeaderboardUI() {
+    // 这个函数需要在UI组件中实现
+    console.log('排行榜数据已更新');
+  }
+
+  // 手动检查连接状态
+  async checkConnection() {
+    try {
+      const response = await fetch(`${this.serverUrl}/health`);
+      if (response.ok) {
+        this.isOnline = true;
+        return true;
+      } else {
+        throw new Error('服务器响应异常');
+      }
+    } catch (error) {
+      this.isOnline = false;
+      return false;
+    }
+  }
+}
+
+// 创建全局排行榜实例
+const autoLeaderboard = new AutoLeaderboard();
+
 
 // 当前激活的特效
 let activeEffect = null;
@@ -976,6 +1231,13 @@ function gameLoop() {
         // 保存统计数据
         saveGameStats();
         
+        // 自动提交分数到云端排行榜
+        autoLeaderboard.autoSubmitScore({
+            score: score,
+            snakeLength: snake.length,
+            gameTime: gameStats.gameTime
+        });
+        
         alert(`游戏结束！你的得分是：${score}`);
         return;
     }
@@ -1106,6 +1368,204 @@ function initStatsPanel() {
         }
     });
 }
+
+// 排行榜面板控制函数
+function initLeaderboardPanel() {
+  const leaderboardBtn = document.getElementById('leaderboardBtn');
+  const leaderboardPanel = document.getElementById('leaderboardPanel');
+  const closeLeaderboard = leaderboardPanel.querySelector('.close');
+  
+  // 排行榜按钮点击事件
+  leaderboardBtn.addEventListener('click', async () => {
+    // 打开面板时自动刷新排行榜
+    await refreshLeaderboardUI();
+    
+    leaderboardPanel.style.display = 'block';
+    leaderboardPanel.classList.add('show');
+  });
+  
+  // 关闭排行榜面板
+  closeLeaderboard.addEventListener('click', () => {
+    leaderboardPanel.classList.remove('show');
+    setTimeout(() => {
+      leaderboardPanel.style.display = 'none';
+    }, 300);
+  });
+  
+  // 点击面板外部关闭
+  leaderboardPanel.addEventListener('click', (e) => {
+    if (e.target === leaderboardPanel) {
+      leaderboardPanel.classList.remove('show');
+      setTimeout(() => {
+        leaderboardPanel.style.display = 'none';
+      }, 300);
+    }
+  });
+  
+  // 玩家名称保存
+  const savePlayerNameBtn = document.getElementById('savePlayerName');
+  const playerNameInput = document.getElementById('playerNameInput');
+  
+  savePlayerNameBtn.addEventListener('click', () => {
+    const newName = playerNameInput.value.trim();
+    if (newName) {
+      autoLeaderboard.setPlayerName(newName);
+      playerNameInput.value = newName;
+      alert('昵称已保存！');
+      // 重新刷新排行榜以显示新名字
+      refreshLeaderboardUI();
+    }
+  });
+  
+  // 刷新排行榜按钮
+  const refreshBtn = document.getElementById('refreshLeaderboard');
+  refreshBtn.addEventListener('click', () => {
+    refreshLeaderboardUI();
+  });
+  
+  // 检查连接按钮
+  const checkConnectionBtn = document.getElementById('checkConnection');
+  checkConnectionBtn.addEventListener('click', async () => {
+    const isConnected = await autoLeaderboard.checkConnection();
+    updateConnectionStatus(isConnected);
+  });
+  
+  // 导出本地数据按钮
+  const exportBtn = document.getElementById('exportLocalData');
+  exportBtn.addEventListener('click', () => {
+    exportLocalLeaderboardData();
+  });
+  
+  // 初始化玩家名称显示
+  playerNameInput.value = autoLeaderboard.playerName;
+  
+  // 初始检查连接状态
+  updateConnectionStatus(autoLeaderboard.isOnline);
+}
+
+// 刷新排行榜UI
+async function refreshLeaderboardUI() {
+  const leaderboardList = document.getElementById('leaderboardList');
+  const syncStatus = document.getElementById('syncStatus');
+  const lastUpdate = document.getElementById('lastUpdate');
+  
+  // 显示加载状态
+  leaderboardList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
+  syncStatus.textContent = '🔄 同步中...';
+  
+  try {
+    // 获取排行榜数据
+    const leaderboardData = await autoLeaderboard.getRealTimeLeaderboard();
+    
+    // 更新状态
+    syncStatus.textContent = autoLeaderboard.isOnline ? '✅ 已同步' : '📱 本地模式';
+    lastUpdate.textContent = `最后更新: ${new Date().toLocaleTimeString()}`;
+    
+    // 渲染排行榜
+    renderLeaderboard(leaderboardData);
+    
+  } catch (error) {
+    syncStatus.textContent = '❌ 同步失败';
+    leaderboardList.innerHTML = '<div class="loading">❌ 加载失败，请检查网络连接</div>';
+  }
+}
+
+// 渲染排行榜列表
+function renderLeaderboard(data) {
+  const leaderboardList = document.getElementById('leaderboardList');
+  
+  if (!data || data.length === 0) {
+    leaderboardList.innerHTML = '<div class="loading">暂无排行榜数据</div>';
+    return;
+  }
+  
+  let html = '';
+  
+  data.forEach((player, index) => {
+    const rank = index + 1;
+    const isCurrentPlayer = player.playerId === autoLeaderboard.playerId;
+    const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+    
+    // 格式化时间
+    const playTime = formatPlayTime(player.gameTime);
+    const timestamp = new Date(player.timestamp).toLocaleDateString();
+    
+    html += `
+      <div class="leaderboard-item ${isCurrentPlayer ? 'current-player' : ''}">
+        <div class="rank-badge ${rankClass}">${rank}</div>
+        <div class="player-name">
+          ${isCurrentPlayer ? '👤 ' : ''}${player.playerName}
+        </div>
+        <div class="player-score">${player.score}</div>
+        <div class="player-device">${getDeviceIcon(player.device)}</div>
+        <div class="player-time" title="${timestamp}">${playTime}</div>
+      </div>
+    `;
+  });
+  
+  leaderboardList.innerHTML = html;
+}
+
+// 获取设备图标
+function getDeviceIcon(device) {
+  switch (device) {
+    case 'mobile': return '📱';
+    case 'desktop': return '💻';
+    default: return '📱';
+  }
+}
+
+// 格式化游戏时间
+function formatPlayTime(seconds) {
+  if (!seconds) return '--';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// 更新连接状态显示
+function updateConnectionStatus(isConnected) {
+  const connectionStatus = document.getElementById('connectionStatus');
+  const syncStatus = document.getElementById('syncStatus');
+  
+  if (isConnected) {
+    connectionStatus.textContent = '✅ 云端连接: 正常';
+    syncStatus.textContent = '✅ 已同步';
+  } else {
+    connectionStatus.textContent = '❌ 云端连接: 断开';
+    syncStatus.textContent = '📱 本地模式';
+  }
+}
+
+// 导出本地数据
+function exportLocalLeaderboardData() {
+  const localData = autoLeaderboard.getLocalLeaderboard();
+  const exportData = {
+    version: '1.0',
+    exportTime: new Date().toISOString(),
+    totalPlayers: localData.length,
+    players: localData
+  };
+  
+  const dataStr = JSON.stringify(exportData, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(dataBlob);
+  link.download = `snake_leaderboard_${new Date().getTime()}.json`;
+  link.click();
+  
+  alert('本地排行榜数据已导出！');
+}
+
+// 更新AutoLeaderboard类的UI更新方法
+AutoLeaderboard.prototype.updateLeaderboardUI = function() {
+  // 如果排行榜面板是打开的，则自动刷新
+  const leaderboardPanel = document.getElementById('leaderboardPanel');
+  if (leaderboardPanel && leaderboardPanel.style.display === 'block') {
+    refreshLeaderboardUI();
+  }
+};
 
 // 主题控制函数
 function initThemeSystem() {
@@ -1261,6 +1721,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化统计面板
     initStatsPanel();
+    
+    // 初始化排行榜面板
+    initLeaderboardPanel();
     
     // 初始化主题系统
     initThemeSystem();
