@@ -256,18 +256,24 @@ class AutoLeaderboard {
     const customServer = urlParams.get('server');
     
     if (customServer) {
-      return customServer.startsWith('http') ? customServer : `http://${customServer}`;
+      return customServer.startsWith('http') ? customServer : this.getProtocol() + customServer;
     }
     
     // 多个服务器选项（按优先级尝试）
     const serverOptions = [
-      'http://124.221.83.63:3000',  // 您的腾讯云服务器
+      this.getProtocol() + '124.221.83.63:3000',  // 您的腾讯云服务器
       'http://localhost:3000',     // 本地开发服务器
       'http://127.0.0.1:3000'      // 本地回环地址
     ];
     
     // 返回第一个可用的服务器地址
     return serverOptions[0];
+  }
+
+  // 根据当前页面协议选择HTTP/HTTPS
+  getProtocol() {
+    // 如果当前页面是HTTPS，尝试使用HTTPS，否则使用HTTP
+    return window.location.protocol === 'https:' ? 'https://' : 'http://';
   }
 
   // 生成玩家唯一ID（基于设备生成）
@@ -299,10 +305,17 @@ class AutoLeaderboard {
   // 初始化服务器连接
   async initServerConnection() {
     try {
+      // 如果当前是HTTPS但服务器是HTTP，尝试HTTPS回退
+      let testUrl = this.serverUrl;
+      if (window.location.protocol === 'https:' && testUrl.startsWith('http://')) {
+        testUrl = testUrl.replace('http://', 'https://');
+      }
+      
       // 测试服务器连接
-      const response = await fetch(`${this.serverUrl}/health`);
+      const response = await fetch(`${testUrl}/health`);
       if (response.ok) {
         this.isOnline = true;
+        this.serverUrl = testUrl; // 更新为实际可用的URL
         console.log('✅ 服务器连接成功');
       } else {
         throw new Error('服务器响应异常');
@@ -310,7 +323,14 @@ class AutoLeaderboard {
       
     } catch (error) {
       console.log('❌ 服务器连接失败，使用本地模式:', error);
-      this.isOnline = false;
+      
+      // 如果是HTTPS混合内容错误，尝试回退到HTTP
+      if (error.message.includes('Mixed Content') || error.message.includes('Failed to fetch')) {
+        console.log('⚠️ HTTPS混合内容被阻止，尝试其他方案...');
+        this.isOnline = false; // 强制使用本地模式
+      } else {
+        this.isOnline = false;
+      }
     }
   }
 
